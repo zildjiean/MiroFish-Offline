@@ -40,6 +40,20 @@ class Config:
     # Embedding configuration
     EMBEDDING_MODEL = os.environ.get('EMBEDDING_MODEL', 'nomic-embed-text')
     EMBEDDING_BASE_URL = os.environ.get('EMBEDDING_BASE_URL', 'http://localhost:11434')
+    # Embedding transport: 'openai' (POST /v1/embeddings) or 'ollama' (POST /api/embed)
+    EMBEDDING_API_STYLE = os.environ.get('EMBEDDING_API_STYLE', 'openai')
+    # Falls back to the LLM key so a single gateway credential covers both
+    EMBEDDING_API_KEY = os.environ.get('EMBEDDING_API_KEY') or os.environ.get('LLM_API_KEY')
+    # Must match the Neo4j vector index dimension (see storage/neo4j_schema.py)
+    EMBEDDING_DIM = int(os.environ.get('EMBEDDING_DIM', '768'))
+    # E5-family models expect 'query: ' / 'passage: '; leave empty for other models
+    EMBEDDING_TEXT_PREFIX = os.environ.get('EMBEDDING_TEXT_PREFIX', '')
+    # CPU-only host — cap torch threads so embedding doesn't starve Flask
+    EMBEDDING_TORCH_THREADS = int(os.environ.get('EMBEDDING_TORCH_THREADS', '4'))
+
+    # Output language for generated free text (personas, agent posts, reports).
+    # 'en' reproduces upstream behaviour; see app/utils/language.py
+    CONTENT_LANGUAGE = os.environ.get('CONTENT_LANGUAGE', 'en')
 
     # File upload configuration
     MAX_CONTENT_LENGTH = 50 * 1024 * 1024  # 50MB

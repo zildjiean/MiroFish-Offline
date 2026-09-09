@@ -18,6 +18,7 @@ from datetime import datetime
 from openai import OpenAI
 
 from ..config import Config
+from ..utils.language import get_language
 from ..utils.logger import get_logger
 from .entity_reader import EntityNode
 from ..storage import GraphStorage
@@ -615,7 +616,12 @@ class OasisProfileGenerator:
     
     def _get_system_prompt(self, is_individual: bool) -> str:
         """Get system prompt"""
-        base_prompt = "You are an expert in generating social media user profiles. Generate detailed, realistic personas for opinion simulation that maximize restoration of existing reality. Must return valid JSON format with all string values containing no unescaped newlines. Use English."
+        base_prompt = (
+            "You are an expert in generating social media user profiles. Generate detailed, "
+            "realistic personas for opinion simulation that maximize restoration of existing "
+            "reality. Must return valid JSON format with all string values containing no "
+            "unescaped newlines. " + get_language().persona_rule
+        )
         return base_prompt
     
     def _build_individual_persona_prompt(
@@ -662,7 +668,7 @@ Please generate JSON containing the following fields:
 Important:
 - All field values must be strings or numbers, do not use newlines
 - persona must be a coherent text description
-- Use English
+- {get_language().persona_rule}
 - Content must be consistent with entity information
 - age must be a valid integer, gender must be "male" or "female"
 """
@@ -711,7 +717,7 @@ Please generate JSON containing the following fields:
 Important:
 - All field values must be strings or numbers, no null values allowed
 - persona must be a coherent text description, do not use newlines
-- Use English
+- {get_language().persona_rule}
 - age must be integer 30, gender must be string "other"
 - Institutional account speech must match its identity positioning"""
     

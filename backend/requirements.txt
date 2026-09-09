@@ -22,6 +22,8 @@ neo4j>=5.15.0
 # OASIS 社交模拟框架
 camel-oasis==0.2.5
 camel-ai==0.2.78
+# camel-ai requires FastMCP from mcp.server, removed in mcp 2.x -> keep 1.x
+mcp>=1.3.0,<2
 
 # ============= 文件处理 =============
 PyMuPDF>=1.24.0

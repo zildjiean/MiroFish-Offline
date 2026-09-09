@@ -2,7 +2,10 @@ import axios from 'axios'
 
 // Create axios instance
 const service = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:5001',
+  // Relative by default so the browser calls the same origin it loaded from and
+  // Vite's /api proxy (vite.config.js) forwards to the backend. The old
+  // 'http://localhost:5001' default made a remote browser call ITSELF, not the server.
+  baseURL: import.meta.env.VITE_API_BASE_URL || '',
   timeout: 300000, // 5 minute timeout (ontology generation may require longer time)
   headers: {
     'Content-Type': 'application/json'
