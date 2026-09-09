@@ -9,8 +9,10 @@ backend/uploads/
 logs/
 log/
 
-# local secrets
+# local secrets - .env plus any backup/variant (.env.bak.*, .env.local, ...)
 .env
+.env.*
+!.env.example
 
 # backups made during install (originals live in git history)
 *.orig

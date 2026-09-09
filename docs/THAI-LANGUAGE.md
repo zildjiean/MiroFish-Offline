@@ -77,6 +77,28 @@ further at the cost of quota and wall-clock. The real fix is a model that writes
 cleanly, and every model on OpenCode Zen is Chinese-trained (Qwen, GLM, Kimi, MiniMax,
 DeepSeek, MiMo), so it is a provider change rather than a prompt change.
 
+## Provider comparison, measured
+
+The CJK problem turned out to be model-specific rather than a property of Chinese-trained
+models in general. Measured on identical Thai persona prompts:
+
+| provider / model | CJK contamination | tool calling | JSON | tok/s |
+|---|---|---|---|---|
+| OpenCode Zen `mimo-v2.5` | **17%** personas, **22%** agent posts | works | valid | ~40 |
+| OpenRouter `deepseek/deepseek-v4-flash-0731` | **0%** personas, **0%** agent posts | 6/6 | 12/12 valid | ~38 |
+
+Measured on the same 35-entity graph. With `mimo-v2.5` the CJK guard fired **65 times**
+across 35 personas and still let 6 through; with `deepseek-v4-flash-0731` it fired
+**zero times**, and all 13 agent posts sampled from a live run were clean Thai.
+
+`deepseek-v4-flash-0731` writes clean Thai, so the CJK guard never fires against it. The
+guard stays in place as a safety net — it costs nothing when there is nothing to catch,
+and it protects anyone who switches back to a model that code-switches.
+
+One observed quirk: occasionally a persona comes back missing `gender` and `country`
+(both `None`). Harmless — `_normalize_gender(None)` returns `"other"` and the Reddit JSON
+writer defaults `country` to `"US"` — but it makes that agent blander than intended.
+
 ## Moving to another provider (e.g. OpenRouter)
 
 Nothing here is OpenCode-specific. To switch:
@@ -98,6 +120,14 @@ Embeddings are unaffected — they run locally and never touch the provider.
 Two things to check on this host: whether FortiGuard sinkholes the new domain
 (`getent hosts openrouter.ai`), and whether the chosen model supports **tool calling**,
 which ReportAgent and OASIS both require.
+
+`openrouter.ai` is **not** sinkholed here, so unlike `opencode.ai` it needs no
+`/etc/hosts` pin — which removes the recurring DNS failure mode described in §1.
+
+The trap when switching: `OPENAI_API_KEY` and `OPENAI_API_BASE_URL` are read by
+CAMEL-AI/OASIS, not by MiroFish's own code. Changing only the `LLM_*` variables sends
+personas and reports to the new provider while every simulation agent keeps calling the
+old one — two bills, and confusing to debug.
 
 ## Agent posts need their own directive
 

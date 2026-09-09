@@ -282,3 +282,50 @@ backend response is ever flattened. Original kept as `Step5Interaction.vue.orig`
 The same `agentResult.response || agentResult.answer` pattern appears around lines 751,
 755, 840 and 846 for the "chat with any individual" flow. Untested — if that view hangs
 the same way, it needs the same treatment.
+
+## 14. Provider moved to OpenRouter
+
+`.env` now points at `https://openrouter.ai/api/v1` with
+`deepseek/deepseek-v4-flash-0731`. Three things this fixed or changed:
+
+**Thai output is clean.** The CJK contamination that forced the guard in §"Guarding
+against script mixing" does not occur with this model — 0% in personas (guard fired
+zero times against 35, versus 65 times with `mimo-v2.5`) and 0% across agent posts
+sampled from a live run. The guard stays as a safety net; it costs nothing when idle.
+
+**`openrouter.ai` is not sinkholed by FortiGuard**, so it needs no `/etc/hosts` pin.
+That removes the intermittent DNS failure mode that broke a `git push` and, earlier,
+the LLM gateway itself.
+
+**Rounds run roughly 30× faster** — about 4 s per round against 122 s with
+`mimo-v2.5`, mostly because this model does not emit long reasoning preambles.
+
+### The switch has one trap
+
+`OPENAI_API_KEY` and `OPENAI_API_BASE_URL` are read by CAMEL-AI/OASIS, not by
+MiroFish's own code. Changing only the `LLM_*` variables sends personas and reports to
+the new provider while every simulation agent keeps calling the old one — two bills,
+and very confusing to debug. Both pairs must move together.
+
+## 15. Two defects found while testing on OpenRouter
+
+**Speed made the memory ceiling worse, not better.** With `mimo-v2.5` a 24-round run
+died at round 20 on 16 GB; with the faster model it died at **round 9 of 24** on the
+same 16 GB. Agents produce state faster than it can be reclaimed, and OASIS loads its
+own extra model (`Twitter/twhin-bert-base`) on top. Treat rounds × agents as the budget,
+not wall-clock time — a faster provider does not buy longer runs.
+
+**Embedding model load races the thread pool.** With `parallel_profile_count=5`, several
+workers hit `EmbeddingService` before the sentence-transformers model has finished
+loading and get:
+
+    Knowledge graph search failed (<entity>): Cannot copy out of meta tensor; no data!
+
+Four personas per run are affected. They are still generated, but **without knowledge
+graph enrichment**, so they are blander than the rest — and the failure is only a
+warning, so nothing surfaces in the UI. Warming the model once before the pool starts
+would fix it. Not yet done.
+
+Also worth watching: `agent_rule` is appended to the persona text OASIS injects, which
+means the instruction text itself sits in the agent's context. No leak into post content
+has been observed, but it is the kind of thing that shows up eventually.
