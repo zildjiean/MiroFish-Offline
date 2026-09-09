@@ -697,13 +697,22 @@ const sendToReportAgent = async (message) => {
   if (res.success && res.data) {
     chatHistory.value.push({
       role: 'assistant',
-      content: res.data.response || res.data.answer || 'No response',
+      content: extractAgentText(res.data.response) || res.data.answer || 'No response',
       timestamp: new Date().toISOString()
     })
     addLog('Report Agent replied')
   } else {
     throw new Error(res.error || 'Request failed')
   }
+}
+
+// ReportAgent.chat() returns {response, sources, tool_calls}, so data.response is an
+// object rather than a string. Rendering that object left the chat stuck on its spinner.
+// Accept either shape so this keeps working if the backend is ever flattened.
+const extractAgentText = (payload) => {
+  if (!payload) return ''
+  if (typeof payload === 'string') return payload
+  return payload.response || payload.answer || ''
 }
 
 const sendToAgent = async (message) => {
