@@ -28,7 +28,7 @@ class Language:
 
     def __init__(self, code: str, english_name: str, native_name: str,
                  persona_rule: str, report_rule: str, chat_rule: str,
-                 outline_rule: str, quote_rule: str, seed_rule: str,
+                 outline_rule: str, quote_rule: str, seed_rule: str, agent_rule: str,
                  forbidden_script: Optional[str] = None):
         self.code = code
         self.english_name = english_name
@@ -39,6 +39,7 @@ class Language:
         self.outline_rule = outline_rule
         self.quote_rule = quote_rule
         self.seed_rule = seed_rule
+        self.agent_rule = agent_rule
         # Models trained largely on Chinese sometimes code-switch mid-sentence when
         # asked for another language. Text matching this is rejected and regenerated.
         self._forbidden = re.compile(forbidden_script) if forbidden_script else None
@@ -80,6 +81,8 @@ ENGLISH = Language(
     ),
     quote_rule="[Language Consistency - ALWAYS Write in English]",
     seed_rule="Write hot_topics, narrative_direction and initial post content in English.",
+    # Upstream behaviour: OASIS's own scaffold is English, so nothing extra is needed.
+    agent_rule="",
 )
 
 THAI = Language(
@@ -121,6 +124,14 @@ THAI = Language(
         "stay in their original form when they are proper nouns, domains or established technical "
         "terms. poster_type is structural and MUST remain one of the English entity type names "
         "listed above."
+    ),
+    # Appended to user_char, which OASIS injects verbatim into each agent's system
+    # prompt. Everything around it in that prompt ("You're a Twitter user", "# OBJECTIVE",
+    # …) is English, so without this the agent drifts back to English despite a Thai persona.
+    agent_rule=(
+        " [ข้อบังคับด้านภาษา] ทุกโพสต์ ความคิดเห็น และการตอบกลับของคุณต้องเขียนเป็น "
+        "ภาษาไทยเสมอ ห้ามเขียนเป็นภาษาอังกฤษทั้งประโยค และห้ามใช้ตัวอักษรจีนโดยเด็ดขาด "
+        "ชื่อองค์กร ชื่อโดเมน และศัพท์เทคนิคคงรูปเดิมได้"
     ),
     forbidden_script=_CJK,
 )

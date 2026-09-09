@@ -1058,6 +1058,9 @@ Important:
                 user_char = profile.bio
                 if profile.persona and profile.persona != profile.bio:
                     user_char = f"{profile.bio} {profile.persona}"
+                # OASIS wraps this in an English scaffold, so the language directive
+                # has to travel with the persona itself or agents drift back to English.
+                user_char = f"{user_char}{get_language().agent_rule}"
                 # Handle newlines (replace with space in CSV)
                 user_char = user_char.replace('\n', ' ').replace('\r', ' ')
 
@@ -1121,7 +1124,8 @@ Important:
                 "username": profile.user_name,
                 "name": profile.name,
                 "bio": profile.bio[:150] if profile.bio else f"{profile.name}",
-                "persona": profile.persona or f"{profile.name} is a participant in social discussions.",
+                "persona": (profile.persona or f"{profile.name} is a participant in social discussions.")
+                            + get_language().agent_rule,
                 "karma": profile.karma if profile.karma else 1000,
                 "created_at": profile.created_at,
                 # OASIS required fields - ensure all have defaults

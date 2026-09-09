@@ -57,13 +57,74 @@ Two defences, both needed:
 
 English is unaffected: `forbidden_script` is unset for it, so the check is a no-op.
 
-## Why agent posts need no separate setting
+### Measured effect, and the residue we accept
 
-OASIS builds each agent's system prompt from its persona text
-(`social_agent/agent.py` → `user_info.to_system_message()`), and ships **no language
-directive of its own** — verified by grepping the installed package. So a persona
-written in Thai yields an agent that posts in Thai. Language flows from persona to
-posts automatically.
+On a 35-entity graph with `mimo-v2.5`:
+
+| | before | after |
+|---|---|---|
+| personas in Thai | 34/34 | 35/35 |
+| personas with Chinese fragments | **21/35 (60%)** | **6/35 (17%)** |
+| regenerations triggered | — | 30 |
+
+The retry only fires while `attempt < max_attempts - 1`, so on the last of three
+attempts a still-contaminated persona ships rather than failing the run. That, plus
+30 regenerations for 35 personas, shows how often this model code-switches.
+
+**17% is accepted deliberately** — the residue is short fragments (`采取采取`,
+`我们将`) that do not stop the Thai reading. Raising `max_attempts` would cut it
+further at the cost of quota and wall-clock. The real fix is a model that writes Thai
+cleanly, and every model on OpenCode Zen is Chinese-trained (Qwen, GLM, Kimi, MiniMax,
+DeepSeek, MiMo), so it is a provider change rather than a prompt change.
+
+## Moving to another provider (e.g. OpenRouter)
+
+Nothing here is OpenCode-specific. To switch:
+
+```bash
+LLM_BASE_URL=https://openrouter.ai/api/v1
+LLM_API_KEY=<key>
+LLM_MODEL_NAME=<model>
+OPENAI_API_BASE_URL=https://openrouter.ai/api/v1   # CAMEL-AI / OASIS read these
+OPENAI_API_KEY=<key>
+```
+
+Then remove `OPENCODE_SESSION_ID` from `.env`. The header injection in
+`.venv/.../mirofish_llm_headers.py` is env-driven and becomes a no-op once that is
+unset, so it can stay in place. `LLM_USER_AGENT` is harmless to keep.
+
+Embeddings are unaffected — they run locally and never touch the provider.
+
+Two things to check on this host: whether FortiGuard sinkholes the new domain
+(`getent hosts openrouter.ai`), and whether the chosen model supports **tool calling**,
+which ReportAgent and OASIS both require.
+
+## Agent posts need their own directive
+
+A Thai persona is **not** enough on its own. OASIS builds the agent system prompt in
+`social_platform/config/user.py` and the whole scaffold is English:
+
+    # OBJECTIVE
+    You're a Twitter user, and I'll present you with some posts...
+    # SELF-DESCRIPTION
+    Your name is X.
+    Your have profile: {user_profile}        <- only this part is ours
+    # RESPONSE METHOD
+    Please perform actions by tool calling.
+
+With only `{user_profile}` in Thai, the surrounding English pulls the model back:
+measured **53%** of agent posts in Thai.
+
+The fix is `Language.agent_rule`, appended to the two fields OASIS injects verbatim —
+`user_char` in the Twitter CSV and `persona` in the Reddit JSON. That puts the
+instruction inside the agent's own system prompt without patching OASIS, a dependency
+we do not own. Result: **100%** of agent posts in Thai (63/63).
+
+`agent_rule` is `""` for English, so upstream behaviour is unchanged.
+
+Chinese fragments still appear in roughly a fifth of agent posts. The persona-level
+CJK guard cannot help there: those posts are generated inside the OASIS subprocess,
+which owns its own retry loop.
 
 ## How it is wired
 
