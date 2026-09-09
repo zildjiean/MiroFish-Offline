@@ -501,6 +501,17 @@ class OasisProfileGenerator:
                     if "persona" not in result or not result["persona"]:
                         result["persona"] = entity_summary or f"{entity_name} is a {entity_type}."
 
+                    # Models trained mostly on Chinese sometimes code-switch mid-sentence.
+                    # Regenerate rather than ship a persona with the wrong script in it.
+                    lang = get_language()
+                    mixed = " ".join(str(result.get(k, "")) for k in ("bio", "persona", "profession"))
+                    if lang.has_forbidden_script(mixed) and attempt < max_attempts - 1:
+                        logger.warning(
+                            f"Persona for '{entity_name}' contained non-{lang.english_name} script "
+                            f"(attempt {attempt+1}/{max_attempts}), regenerating"
+                        )
+                        continue
+
                     return result
 
                 except json.JSONDecodeError as je:

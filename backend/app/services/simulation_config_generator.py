@@ -19,6 +19,7 @@ from datetime import datetime
 from openai import OpenAI
 
 from ..config import Config
+from ..utils.language import get_language
 from ..utils.logger import get_logger
 from .entity_reader import EntityNode
 
@@ -687,6 +688,8 @@ Please generate event configuration JSON:
 - Design initial post content, **each post must specify poster_type (publisher type)**
 
 **Important**: poster_type must be selected from the "Available Entity Types" above so initial posts can be assigned to appropriate agents for publishing.
+
+**Language**: {get_language().seed_rule}
 Example: Official statements should be published by Official/University type, news by MediaOutlet, student opinions by Student type.
 
 Return JSON format (no markdown):

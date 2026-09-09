@@ -19,6 +19,7 @@ simulation subprocess, which inherits the setting.
 | Affected | Where |
 |---|---|
 | Persona `bio`, `persona`, `profession`, `interested_topics` | `services/oasis_profile_generator.py` |
+| Seed posts (`initial_posts`) and `narrative_direction` | `services/simulation_config_generator.py` |
 | What agents post during a simulation | follows the persona text — see below |
 | Report outline, body and quotes | `services/report_agent.py` |
 | Answers when chatting with the report agent | `services/report_agent.py` |
@@ -30,7 +31,31 @@ These stay English at every setting, because they are structural rather than pro
 | Ontology entity / edge type names | they become Neo4j labels and relationship types; Cypher would break |
 | `gender` (`male` / `female` / `other`) | OASIS requires these exact values, and normalises to them |
 | `country` | kept as an English country code |
+| `poster_type` on seed posts | must match one of the English entity type names |
 | The frontend UI | still hardcoded English strings — see "Not covered" below |
+
+## Seed posts matter as much as personas
+
+A simulation opens with `initial_posts` from `simulation_config.json`, replayed on both
+platforms before any agent acts. Those are written by `simulation_config_generator.py`,
+not by the personas — so translating personas alone leaves the first rounds in English
+while later agent-written posts are Thai. Both files need the language rule.
+
+## Guarding against script mixing
+
+Most models available through OpenCode Zen are Chinese-trained, and they code-switch
+mid-sentence when asked to write Thai — an early run produced Chinese fragments in
+**21 of 35** personas (`รายงาน威胁 brief`, `我们会ตรวจสอบ`).
+
+Two defences, both needed:
+
+1. Each Thai prompt rule opens with an explicit instruction never to emit Chinese,
+   Japanese or Korean characters. This alone removed contamination from the seed posts.
+2. `Language.has_forbidden_script()` checks generated personas against a CJK/kana/hangul
+   pattern, and `_generate_profile_with_llm` regenerates rather than shipping a
+   contaminated persona — reusing the retry loop that already existed for bad JSON.
+
+English is unaffected: `forbidden_script` is unset for it, so the check is a no-op.
 
 ## Why agent posts need no separate setting
 
