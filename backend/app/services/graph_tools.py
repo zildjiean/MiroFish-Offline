@@ -17,6 +17,7 @@ from dataclasses import dataclass, field
 from ..utils.logger import get_logger
 from ..utils.llm_client import LLMClient
 from ..storage import GraphStorage
+from ..config import Config
 
 logger = get_logger('mirofish.graph_tools')
 
@@ -1487,7 +1488,7 @@ Please generate an interview summary."""
                     {"role": "user", "content": user_prompt}
                 ],
                 temperature=0.3,
-                max_tokens=800
+                max_tokens=Config.LLM_MAX_TOKENS
             )
             return summary
 

@@ -1307,7 +1307,7 @@ class ReportAgent:
             response = self.llm.chat(
                 messages=messages,
                 temperature=0.5,
-                max_tokens=4096
+                max_tokens=Config.LLM_MAX_TOKENS
             )
 
             # Check if LLM return is None (API exception or empty content)
@@ -1510,7 +1510,7 @@ class ReportAgent:
         response = self.llm.chat(
             messages=messages,
             temperature=0.5,
-            max_tokens=4096
+            max_tokens=Config.LLM_MAX_TOKENS
         )
 
         # Check forceconclusion when LLM return is None

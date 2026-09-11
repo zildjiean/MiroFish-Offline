@@ -6,6 +6,7 @@ Interface 1: Analyze text content and generate entity and relationship type defi
 import json
 from typing import Dict, Any, List, Optional
 from ..utils.llm_client import LLMClient
+from ..config import Config
 
 
 # System prompt for ontology generation
@@ -197,7 +198,7 @@ class OntologyGenerator:
         result = self.llm_client.chat_json(
             messages=messages,
             temperature=0.3,
-            max_tokens=4096
+            max_tokens=Config.LLM_MAX_TOKENS
         )
 
         # Validate and post-process

@@ -31,6 +31,10 @@ class Config:
     LLM_API_KEY = os.environ.get('LLM_API_KEY')
     LLM_BASE_URL = os.environ.get('LLM_BASE_URL', 'http://localhost:11434/v1')
     LLM_MODEL_NAME = os.environ.get('LLM_MODEL_NAME', 'qwen2.5:32b')
+    # Completion budget per request. Reasoning models spend part of it thinking before
+    # emitting anything, so 4096 could leave nothing for the answer on Thai input and
+    # the call came back with content=None (finish_reason=length).
+    LLM_MAX_TOKENS = int(os.environ.get('LLM_MAX_TOKENS', '8192'))
 
     # Neo4j configuration
     NEO4J_URI = os.environ.get('NEO4J_URI', 'bolt://localhost:7687')

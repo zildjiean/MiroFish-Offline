@@ -10,6 +10,7 @@ import logging
 from typing import Dict, Any, List, Optional
 
 from ..utils.llm_client import LLMClient
+from ..config import Config
 
 logger = logging.getLogger('mirofish.ner_extractor')
 
@@ -83,7 +84,7 @@ class NERExtractor:
                 result = self.llm.chat_json(
                     messages=messages,
                     temperature=0.1,  # Low temp for extraction precision
-                    max_tokens=4096,
+                    max_tokens=Config.LLM_MAX_TOKENS,
                 )
                 return self._validate_and_clean(result, ontology)
 
