@@ -80,7 +80,19 @@ class LLMClient:
             }
 
         response = self.client.chat.completions.create(**kwargs)
-        content = response.choices[0].message.content
+        choice = response.choices[0]
+        content = choice.message.content
+
+        # Reasoning models spend part of the budget thinking before they emit anything,
+        # and return content=None when it runs out. Running re.sub on that raised
+        # "expected string or bytes-like object, got 'NoneType'", which surfaced as an
+        # opaque NER failure. Raise instead so the caller's retry loop sees a real reason.
+        if not content:
+            raise ValueError(
+                f"Model returned no content (finish_reason={choice.finish_reason}); "
+                f"a reasoning model may need a larger max_tokens than {kwargs.get('max_tokens')}"
+            )
+
         # Some models (like MiniMax M2.5) include <think>thinking content in response, need to remove
         content = re.sub(r'<think>[\s\S]*?</think>', '', content).strip()
         return content

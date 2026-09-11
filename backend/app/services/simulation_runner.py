@@ -605,10 +605,18 @@ class SimulationRunner:
             graph_updater = GraphMemoryManager.get_updater(state.simulation_id)
         
         try:
-            with open(log_path, 'r', encoding='utf-8') as f:
+            # Read bytes, not text: the simulation subprocess may be mid-write, and Thai
+            # is multi-byte in UTF-8, so a split character used to raise UnicodeDecodeError
+            # and discard the entire batch of actions (23k occurrences in one run).
+            with open(log_path, 'rb') as f:
                 f.seek(position)
-                for line in f:
-                    line = line.strip()
+                raw = f.read()
+                last_newline = raw.rfind(b'\n')
+                if last_newline == -1:
+                    return position          # nothing complete yet; retry next poll
+                new_position = position + last_newline + 1
+                for raw_line in raw[:last_newline + 1].split(b'\n'):
+                    line = raw_line.decode('utf-8', errors='replace').strip()
                     if line:
                         try:
                             action_data = json.loads(line)
@@ -683,7 +691,7 @@ class SimulationRunner:
                             
                         except json.JSONDecodeError:
                             pass
-                return f.tell()
+                return new_position
         except Exception as e:
             logger.warning(f"Failed to read action log: {log_path}, error={e}")
             return position

@@ -1601,7 +1601,10 @@ def start_simulation():
             platform=platform,
             max_rounds=max_rounds,
             enable_graph_memory_update=enable_graph_memory_update,
-            graph_id=graph_id
+            graph_id=graph_id,
+            # Without this the runner raises "Must provide storage" and graph memory
+            # update silently never runs, however the request asked for it.
+            storage=current_app.extensions.get('neo4j_storage')
         )
         
         # Update simulation status
