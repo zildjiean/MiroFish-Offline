@@ -380,3 +380,53 @@ language sample than the earlier partial runs:
 Against `mimo-v2.5`'s 22%, that is an order of magnitude cleaner. Note most actions are
 not posts at all — of 1,142 logged actions, 495 are `LIKE_POST` and only 209 produce
 text, which is why action counts overstate LLM cost.
+
+## 18. NER gets its own model (`NER_MODEL_NAME`)
+
+Entity extraction is structured output, not prose, and the two jobs turn out to want
+different models. Measured on the same Thai text and the real `NERExtractor` prompt:
+
+| | `deepseek-v4-flash-0731` | `openai/gpt-oss-20b` |
+|---|---|---|
+| NER success | 2 of 3 | **3 of 3** |
+| NER latency | 71 s | **20–52 s** |
+| entities / relations | 6 / 2 | **7–8 / 2–7** |
+| reasoning emitted | 6,735 chars | **185–338 chars** |
+| report generation | **works** (9,427 chars, 3 sections) | **fails** |
+| cost per job | $0.18 | $0.10 |
+
+`deepseek` reasons at length — roughly twenty times more than `gpt-oss-20b` — which is
+what pushed NER past the completion budget and caused the failures in §15 and §17.
+But that same depth is what makes it able to write the report: `gpt-oss-20b` planned
+only **1** section where the prompt demands 2–5, then returned no content at all during
+the ReACT step (`finish_reason=stop`, not `length` — it simply had nothing to say).
+
+So `NER_MODEL_NAME` overrides the model for entity extraction only. Empty (the default)
+falls back to `LLM_MODEL_NAME` and reproduces upstream behaviour.
+
+    LLM_MODEL_NAME=deepseek/deepseek-v4-flash-0731   # personas, reports, agents
+    NER_MODEL_NAME=openai/gpt-oss-20b                # entity extraction only
+
+This also makes graph memory update practical: NER is its bottleneck, so a full
+simulation drops from roughly 4 hours to around 50 minutes.
+
+**Caveat worth knowing.** Models classify entity types differently — `gpt-oss-20b` typed
+`moc.go.th` as `GovernmentAgency` where `deepseek` did not surface it at all. Feeding
+one model's NER into a graph another model built can leave the same entity with
+inconsistent types. If that shows up, rebuild the whole graph under one model rather
+than patching individual nodes.
+
+## 19. Graph memory update verified end to end
+
+With NER working, the feature from §13 completes its full path for the first time:
+
+    [add_text] NER done: 13 entities, 6 relations
+    [add_text] Chunk done: episode=78d1c8a1-...
+    Successfully batch sent 5 activities to graph 3faa72b6-...
+
+Neo4j before and after a 4-round run: **218 → 221 nodes, 99 → 105 relationships,
+88 → 89 episodes, 127 → 129 entities**. The 13 entities NER found became 2 new ones
+because the rest already existed and were merged correctly.
+
+What agents say during a simulation now flows back into the knowledge graph as entities
+and relations, not just as an opaque episode.

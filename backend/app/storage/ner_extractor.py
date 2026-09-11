@@ -48,6 +48,11 @@ class NERExtractor:
     """Extract entities and relations from text using local LLM."""
 
     def __init__(self, llm_client: Optional[LLMClient] = None, max_retries: int = 2):
+        # NER_MODEL_NAME overrides the model for entity extraction only; everything else
+        # (personas, reports, agents) keeps using LLM_MODEL_NAME. Unset means no change.
+        if llm_client is None and Config.NER_MODEL_NAME:
+            llm_client = LLMClient(model=Config.NER_MODEL_NAME)
+            logger.info(f"NER using dedicated model: {Config.NER_MODEL_NAME}")
         self.llm = llm_client or LLMClient()
         self.max_retries = max_retries
 

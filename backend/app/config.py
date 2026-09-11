@@ -36,6 +36,13 @@ class Config:
     # the call came back with content=None (finish_reason=length).
     LLM_MAX_TOKENS = int(os.environ.get('LLM_MAX_TOKENS', '8192'))
 
+    # Entity extraction is structured output, not prose, and a smaller non-verbose model
+    # handles it faster and more reliably than one that reasons at length. Empty means
+    # "use LLM_MODEL_NAME", which reproduces upstream behaviour.
+    # Caveat: models classify entity types differently, so mixing one model's NER into a
+    # graph built by another can produce inconsistent types for the same entity.
+    NER_MODEL_NAME = os.environ.get('NER_MODEL_NAME', '').strip()
+
     # Neo4j configuration
     NEO4J_URI = os.environ.get('NEO4J_URI', 'bolt://localhost:7687')
     NEO4J_USER = os.environ.get('NEO4J_USER', 'neo4j')

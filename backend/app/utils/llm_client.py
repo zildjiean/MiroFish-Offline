@@ -88,9 +88,16 @@ class LLMClient:
         # "expected string or bytes-like object, got 'NoneType'", which surfaced as an
         # opaque NER failure. Raise instead so the caller's retry loop sees a real reason.
         if not content:
+            if choice.finish_reason == "length":
+                raise ValueError(
+                    f"Model returned no content (finish_reason=length); a reasoning model "
+                    f"spent the whole budget thinking — raise LLM_MAX_TOKENS above "
+                    f"{kwargs.get('max_tokens')}"
+                )
             raise ValueError(
-                f"Model returned no content (finish_reason={choice.finish_reason}); "
-                f"a reasoning model may need a larger max_tokens than {kwargs.get('max_tokens')}"
+                f"Model returned no content (finish_reason={choice.finish_reason}); it "
+                f"stopped without producing an answer, which usually means the model "
+                f"did not produce an answer for this prompt rather than running out of room"
             )
 
         # Some models (like MiniMax M2.5) include <think>thinking content in response, need to remove
