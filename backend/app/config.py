@@ -36,6 +36,11 @@ class Config:
     # the call came back with content=None (finish_reason=length).
     LLM_MAX_TOKENS = int(os.environ.get('LLM_MAX_TOKENS', '8192'))
 
+    # Per-request timeout. 300s meant one hung call could block a batch for 5 minutes,
+    # and with retries a single agent-config batch stalled for over half an hour.
+    # Failing fast and retrying recovers quicker than waiting out a stuck request.
+    LLM_TIMEOUT = float(os.environ.get('LLM_TIMEOUT', '120'))
+
     # Entity extraction is structured output, not prose, and a smaller non-verbose model
     # handles it faster and more reliably than one that reasons at length. Empty means
     # "use LLM_MODEL_NAME", which reproduces upstream behaviour.

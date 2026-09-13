@@ -503,3 +503,59 @@ magnitude. Three things it missed:
   6,735 characters of reasoning per call against `gpt-oss-20b`'s 185–338 (§18)
 
 With the caps above, a comparable run should land near **$1–1.5**.
+
+## 24. A full run, end to end, with every setting in place
+
+First run where the caps, the split NER model, the 8192 budget and a live simulation
+environment were all in effect at once. Project of 151 agents, 12 rounds at 180
+simulated minutes each.
+
+| stage | cost | result |
+|---|---|---|
+| personas + config (151) | $0.249 | 0 rule-based fallbacks |
+| simulation (12 rounds) | $0.079 | 123 posts, 52,784 characters, 46 agents spoke |
+| report | $0.049 | 15,077 characters, 5 sections, 29 evidence quotes |
+| **total** | **$0.377** | |
+
+The previous comparable run cost **$2.5–3.5**, so this is seven to nine times cheaper
+for output that is better, not worse: Thai at **100%** (123/123 posts, against 98%
+before) and the longest report produced in any test.
+
+Peak OASIS memory was **1.7 GB** against the 15 GB that used to trigger the OOM killer.
+`SIM_AGENTS_PER_HOUR_MAX` did the work — the LLM generated **50** for this run, which
+would have been roughly twice the setting that already exhausted 16 GB.
+
+## 25. Generate the report before stopping the simulation
+
+§21 noted that ReportAgent's interview tool needs the simulation process alive. This run
+measured what that is worth:
+
+| | environment stopped | **environment alive** |
+|---|---|---|
+| report length | 11,925 | **15,077** |
+| evidence quotes | 12 | **29** |
+
+Three interviews completed, returning 69 KB of agent answers through the IPC channel.
+The tool had never once succeeded before, because every earlier test generated its
+report after stopping the simulation.
+
+The order that works: prepare → run → **generate report** → stop.
+
+One caveat seen here: `/api/report/<id>` reported `status: planning` for some time after
+the run had actually finished — `section_05.md` and `full_report.md` were already on
+disk. Check the report directory rather than trusting the status field alone.
+
+## 26. The same content=None bug, in a third place
+
+`report_agent.py` also calls the OpenAI client directly, so it hit the failure fixed
+elsewhere:
+
+    WARNING: LLM agent selection failed, using default selection:
+             Model returned no content (finish_reason=length)
+
+The report still completed — selection fell back to agents 0–5 by index instead of
+choosing by relevance, which quietly lowers interview quality. Not yet fixed.
+
+Files that call the client directly and therefore bypass `llm_client`'s guard:
+`simulation_config_generator.py` (fixed), `report_agent.py` (not fixed),
+`oasis_profile_generator.py` (has its own retry loop).

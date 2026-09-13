@@ -454,6 +454,17 @@ class SimulationConfigGenerator:
                 content = response.choices[0].message.content
                 finish_reason = response.choices[0].finish_reason
 
+                # A reasoning model can spend the whole budget thinking and return
+                # content=None. _fix_truncated_json would then fail on .strip() with an
+                # opaque AttributeError, so treat it as a retryable error with a real
+                # reason instead. This path calls the OpenAI client directly and so
+                # bypasses the same guard in llm_client.
+                if content is None:
+                    raise ValueError(
+                        f"Model returned no content (finish_reason={finish_reason}); "
+                        f"a reasoning model may have used the whole budget thinking"
+                    )
+
                 # Check if output was truncated
                 if finish_reason == 'length':
                     logger.warning(f"LLM output truncated (attempt {attempt+1})")
