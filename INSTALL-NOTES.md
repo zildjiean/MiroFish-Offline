@@ -430,3 +430,38 @@ because the rest already existed and were merged correctly.
 
 What agents say during a simulation now flows back into the knowledge graph as entities
 and relations, not just as an opaque episode.
+
+## 20. `LLM_MAX_TOKENS` has an optimum, not a floor
+
+§18 raised the budget to 16384 to stop NER failing. That fixed NER but broke report
+generation, and the reason is that the two stages of ReportAgent want opposite things.
+
+Measured on the same simulation (`sim_daa52d11b060`, 1,608 actions) with
+`deepseek-v4-flash-0731`:
+
+| `LLM_MAX_TOKENS` | tool_call / llm_response | report | length |
+|---|---|---|---|
+| 4096 | 7 / 12 | **failed** — no content, `finish_reason=length` | 0 |
+| 16384 | 3 / 19 | completed but unusable | 1,355 |
+| **8192** | **15 / 25** | **completed** | **11,925** |
+
+Too low and the model runs out of budget writing the section after tools return
+(63 facts made the prompt large). Too high and it reasons past the tool-calling format
+and emits `<tool_call>{...}</tool_call>` as literal prose, which the assembler writes
+straight into the report — four sections of raw tool calls and no content.
+
+8192 is the working value and is now the default in `config.py`. It is not a floor to
+raise when something fails: check which stage failed first.
+
+Residue at 8192: six stray `tool_call` strings and three sections hitting the iteration
+cap, neither of which spoils the output.
+
+## 21. Report needs the simulation environment alive
+
+    WARNING: Interview API call failed (environment not running?):
+             Simulation environment not running or closed
+
+ReportAgent interviews agents as one of its tools. That only works while the simulation
+process is still in wait mode after finishing its rounds. Generate the report before
+stopping the simulation, or that tool silently contributes nothing — the report still
+completes, just without interview evidence.
