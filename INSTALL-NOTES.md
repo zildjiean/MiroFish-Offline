@@ -465,3 +465,41 @@ ReportAgent interviews agents as one of its tools. That only works while the sim
 process is still in wait mode after finishing its rounds. Generate the report before
 stopping the simulation, or that tool silently contributes nothing — the report still
 completes, just without interview evidence.
+
+## 22. Capping simulation cost from `.env`
+
+`/prepare` regenerates `simulation_config.json` every run, so editing that file by hand
+never survives — a trap hit repeatedly while testing. Two values in `time_config` drive
+both cost and memory, and they can now be capped from `.env` instead:
+
+    SIM_AGENTS_PER_HOUR_MAX=12   # cap what the LLM generated (0 = leave alone)
+    SIM_MINUTES_PER_ROUND=180    # override minutes per round (0 = leave alone)
+
+Applied in `_parse_time_config` after the LLM's value and its own validation, so the cap
+is a ceiling rather than a replacement.
+
+**Why these two.** `agents_per_hour_max` is the single biggest lever (§16): halving it
+from 25 to 12 cut peak memory roughly sixfold and let a 24-round run finish where it
+previously died at round 9 — without removing any agent, since all of them remain and
+simply take turns. `minutes_per_round` matters because a run starting at midnight with
+60-minute rounds spends its first eight rounds in hours where no agent is awake:
+measured 0 posts across rounds 1–8. At 180 minutes those dead hours are skipped, so 12
+rounds cover 36 simulated hours instead of wasting a third of them.
+
+## 23. What a run actually costs
+
+Measured against OpenRouter's credits endpoint rather than estimated from token counts.
+Between 11 and 13 September, usage went from **$70.65 to $76.79 — $6.14**, covering one
+user simulation (123 personas, 15 rounds, 1,608 actions), three report generations, and
+a long tail of testing. **A full run of that size is roughly $2.5–3.5.**
+
+An earlier estimate in this file of ~$0.18 per job was wrong by more than an order of
+magnitude. Three things it missed:
+
+- prompts grow every round, because each awake agent reads the accumulated backlog —
+  the same O(n²) that drives memory (§10)
+- that run had 123 personas, not the 35 used for the estimate
+- reasoning tokens are billed as completion, and `deepseek-v4-flash-0731` emits roughly
+  6,735 characters of reasoning per call against `gpt-oss-20b`'s 185–338 (§18)
+
+With the caps above, a comparable run should land near **$1–1.5**.

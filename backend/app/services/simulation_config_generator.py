@@ -627,9 +627,29 @@ Field description:
             agents_per_hour_min = max(1, agents_per_hour_max // 2)
             logger.warning(f"agents_per_hour_min >= max, corrected to {agents_per_hour_min}")
 
+        # .env caps, applied after the LLM's own values and its validation above, so a
+        # deployment can hold down cost without re-editing simulation_config.json after
+        # every /prepare.
+        if Config.SIM_AGENTS_PER_HOUR_MAX and agents_per_hour_max > Config.SIM_AGENTS_PER_HOUR_MAX:
+            logger.info(
+                f"agents_per_hour_max {agents_per_hour_max} -> {Config.SIM_AGENTS_PER_HOUR_MAX} "
+                f"(SIM_AGENTS_PER_HOUR_MAX)"
+            )
+            agents_per_hour_max = Config.SIM_AGENTS_PER_HOUR_MAX
+            if agents_per_hour_min >= agents_per_hour_max:
+                agents_per_hour_min = max(1, agents_per_hour_max // 2)
+
+        minutes_per_round = result.get("minutes_per_round", 60)
+        if Config.SIM_MINUTES_PER_ROUND:
+            logger.info(
+                f"minutes_per_round {minutes_per_round} -> {Config.SIM_MINUTES_PER_ROUND} "
+                f"(SIM_MINUTES_PER_ROUND)"
+            )
+            minutes_per_round = Config.SIM_MINUTES_PER_ROUND
+
         return TimeSimulationConfig(
             total_simulation_hours=result.get("total_simulation_hours", 72),
-            minutes_per_round=result.get("minutes_per_round", 60),  # Default 1 hour per round
+            minutes_per_round=minutes_per_round,
             agents_per_hour_min=agents_per_hour_min,
             agents_per_hour_max=agents_per_hour_max,
             peak_hours=result.get("peak_hours", [19, 20, 21, 22]),

@@ -43,6 +43,13 @@ class Config:
     # graph built by another can produce inconsistent types for the same entity.
     NER_MODEL_NAME = os.environ.get('NER_MODEL_NAME', '').strip()
 
+    # /prepare regenerates simulation_config.json on every run, so editing that file by
+    # hand does not survive. These cap what the LLM produces, and are the two values that
+    # actually drive cost and memory: how many agents wake per round, and how much
+    # simulated time a round covers. 0 means "leave the generated value alone".
+    SIM_AGENTS_PER_HOUR_MAX = int(os.environ.get('SIM_AGENTS_PER_HOUR_MAX', '0'))
+    SIM_MINUTES_PER_ROUND = int(os.environ.get('SIM_MINUTES_PER_ROUND', '0'))
+
     # Neo4j configuration
     NEO4J_URI = os.environ.get('NEO4J_URI', 'bolt://localhost:7687')
     NEO4J_USER = os.environ.get('NEO4J_USER', 'neo4j')
